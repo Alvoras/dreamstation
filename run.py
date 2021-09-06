@@ -1,8 +1,12 @@
 import argparse
+import shutil
 
 import torch
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
 
 from lib import const
+from lib.const import LOADING_TASK_STEPS
 from lib.trainer import Trainer
 
 parser = argparse.ArgumentParser()
@@ -26,7 +30,7 @@ parser.add_argument("-T", "--target-images", help="Target images")
 parser.add_argument("-t", "--target-image", help="Target image")
 parser.add_argument("-s", "--seed", type=int, default=torch.seed(), help="Seed")
 parser.add_argument(
-    "-M", "--max-iterations", type=int, default=1000, help="Max iteration"
+    "-M", "--max-iterations", type=int, default=1000, help="Max iterations"
 )
 args = parser.parse_args()
 
@@ -40,23 +44,49 @@ args.target_images = (
     else []
 )
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print("Using device:", device)
+with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TimeElapsedColumn(),
+        console=Console()
+) as progress:
+    loading_task = progress.add_task(
+        f"Loading...",
+        total=LOADING_TASK_STEPS
+    )
 
-if args.prompts:
-    print("Using text prompt:", args.prompts)
+    iteration_task = progress.add_task(
+        f"Running {str(args.max_iterations)} iteration{'s' if args.max_iterations > 1 else ''}",
+        start=False,
+        visible=False,
+        total=args.max_iterations
+    )
 
-if args.target_images:
-    print("Using image prompts:", args.target_images)
+    progress.log(f"Iterations : {args.max_iterations}")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    progress.log(f"Device : [bold]{device}[/bold]")
+    progress.log("Text prompt:", args.prompts)
+    if args.target_images:
+        progress.log("Image prompts:", args.target_images)
 
-torch.manual_seed(args.seed)
-print("Using seed:", args.seed)
+    torch.manual_seed(args.seed)
+    progress.log("Seed:", args.seed)
+    progress.advance(loading_task)
 
-trainer = Trainer(args, device)
-trainer.preflight()
+    trainer = Trainer(args, progress, loading_task, device)
+    trainer.preflight()
+    progress.update(loading_task, completed=LOADING_TASK_STEPS)
+    progress.update(loading_task, visible=False)
 
-try:
-    for iteration in range(args.max_iterations):
-        trainer.train(iteration)
-except KeyboardInterrupt:
-    pass
+    progress.start_task(iteration_task)
+    progress.update(iteration_task, visible=True)
+    try:
+        for iteration in range(args.max_iterations):
+            trainer.train(iteration)
+            progress.advance(iteration_task)
+        progress.update(iteration_task, completed=args.max_iterations)
+
+    except KeyboardInterrupt:
+        pass

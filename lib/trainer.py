@@ -39,7 +39,8 @@ from lib.prompt_utils import parse_prompt
 
 
 class Trainer:
-    def __init__(self, args, device):
+    def __init__(self, args, progress, loading_task, device):
+        self.progress = progress
         self.display_freq = args.display_freq
         self.author = args.author
         self.no_metadata = args.no_metadata
@@ -56,6 +57,8 @@ class Trainer:
         self.vqgan_checkpoint = f"{self.model_name}.ckpt"
 
         self.model = self.load_vqgan_model().to(device)
+        progress.advance(loading_task)
+
         self.perceptor = (
             clip.load(CLIP_MODEL, jit=False)[0].eval().requires_grad_(False).to(device)
         )
@@ -73,6 +76,8 @@ class Trainer:
         self.z_max = self.model.quantize.embedding.weight.max(dim=0).values[
                      None, :, None, None
                      ]
+
+        progress.advance(loading_task)
 
         if args.initial_image:
             pil_image = Image.open(args.initial_image).convert("RGB")
@@ -120,6 +125,7 @@ class Trainer:
                 generator=gen
             )
             self.pMs.append(Prompt(embed, weight).to(device))
+        progress.advance(loading_task)
 
     def make_progress_dir(self):
         str_prompts = "_".join(self.prompts).replace(" ", "-")
@@ -205,7 +211,6 @@ class Trainer:
     @torch.no_grad()
     def checkin(self, i, losses):
         losses_str = ", ".join(f"{loss.item():g}" for loss in losses)
-        print(f"i: {i}, loss: {sum(losses).item():g}, losses: {losses_str}")
         out = self.synth()
         TF.to_pil_image(out[0].cpu()).save("steps/progress.png")
         # self.add_stegano_data('steps/progress.png')
