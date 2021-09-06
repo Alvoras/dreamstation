@@ -67,7 +67,7 @@ with Progress(
         total=args.max_iterations
     )
 
-    parameter_table = Table(title=f"", box=box.MINIMAL)
+    parameter_table = Table(title="", box=box.MINIMAL)
     parameter_table.add_column(f"Text prompt{'s' if len(args.prompts) > 1 else ''}", style="green")
     parameter_table.add_column(f"Target image{'s' if len(args.target_images) > 1 else ''}", style="green")
     parameter_table.add_column("Device", style="cyan")
