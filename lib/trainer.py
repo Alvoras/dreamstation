@@ -26,7 +26,8 @@ from lib.const import (
     STEP_SIZE,
     NOISE_PROMPT_SEED,
     NOISE_PROMPT_WEIGHTS,
-    INIT_WEIGHT, LOADING_TASK_STEPS,
+    INIT_WEIGHT,
+    LOADING_TASK_STEPS,
 )
 from lib.grad import clamp_with_grad, replace_grad
 from lib.image_utils import resize_image
@@ -71,11 +72,11 @@ class Trainer:
         self.toks_x, self.toks_y = args.width // self.f, args.height // self.f
         self.side_x, self.side_y = self.toks_x * self.f, self.toks_y * self.f
         self.z_min = self.model.quantize.embedding.weight.min(dim=0).values[
-                     None, :, None, None
-                     ]
+            None, :, None, None
+        ]
         self.z_max = self.model.quantize.embedding.weight.max(dim=0).values[
-                     None, :, None, None
-                     ]
+            None, :, None, None
+        ]
 
         progress.update(loading_task, completed=LOADING_TASK_STEPS)
 
@@ -281,7 +282,7 @@ class MakeCutouts(nn.Module):
             )
             offset_x = torch.randint(0, side_x - size + 1, ())
             offset_y = torch.randint(0, side_y - size + 1, ())
-            cutout = input[:, :, offset_y: offset_y + size, offset_x: offset_x + size]
+            cutout = input[:, :, offset_y : offset_y + size, offset_x : offset_x + size]
             cutouts.append(resample(cutout, (self.cut_size, self.cut_size)))
         batch = self.augs(torch.cat(cutouts, dim=0))
         if self.noise_fac:
@@ -303,6 +304,6 @@ class Prompt(nn.Module):
         dists = input_normed.sub(embed_normed).norm(dim=2).div(2).arcsin().pow(2).mul(2)
         dists = dists * self.weight.sign()
         return (
-                self.weight.abs()
-                * replace_grad(dists, torch.maximum(dists, self.stop)).mean()
+            self.weight.abs()
+            * replace_grad(dists, torch.maximum(dists, self.stop)).mean()
         )

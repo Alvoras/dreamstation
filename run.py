@@ -4,7 +4,13 @@ import signal
 import torch
 from rich import box
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    TextColumn,
+    BarColumn,
+    TimeElapsedColumn,
+)
 from rich.style import Style
 from rich.table import Table
 
@@ -48,28 +54,29 @@ args.target_images = (
 
 
 with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-        TimeElapsedColumn(),
-        console=Console()
+    SpinnerColumn(),
+    TextColumn("[progress.description]{task.description}"),
+    BarColumn(),
+    TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+    TimeElapsedColumn(),
+    console=Console(),
 ) as progress:
-    loading_task = progress.add_task(
-        f"Loading...",
-        total=LOADING_TASK_STEPS
-    )
+    loading_task = progress.add_task(f"Loading...", total=LOADING_TASK_STEPS)
 
     iteration_task = progress.add_task(
         f"Running {str(args.max_iterations)} iteration{'s' if args.max_iterations > 1 else ''}",
         start=False,
         visible=False,
-        total=args.max_iterations
+        total=args.max_iterations,
     )
 
     parameter_table = Table(title="", box=box.MINIMAL)
-    parameter_table.add_column(f"Text prompt{'s' if len(args.prompts) > 1 else ''}", style="green")
-    parameter_table.add_column(f"Target image{'s' if len(args.target_images) > 1 else ''}", style="green")
+    parameter_table.add_column(
+        f"Text prompt{'s' if len(args.prompts) > 1 else ''}", style="green"
+    )
+    parameter_table.add_column(
+        f"Target image{'s' if len(args.target_images) > 1 else ''}", style="green"
+    )
     parameter_table.add_column("Device", style="cyan")
     parameter_table.add_column("Iterations", style="cyan")
     parameter_table.add_column("Width", style="cyan")
@@ -116,6 +123,8 @@ with Progress(
             trainer.train(iteration)
             progress.advance(iteration_task)
         progress.update(iteration_task, completed=args.max_iterations)
-        progress.console.out("Finished \( ﾟヮﾟ)/", style=Style(color="green", bold=True), highlight=False)
+        progress.console.out(
+            "Finished \( ﾟヮﾟ)/", style=Style(color="green", bold=True), highlight=False
+        )
     except KeyboardInterrupt:
         progress.console.out("Canceled (っ ºДº)っ ︵ ⌨", style="bold", highlight=False)
