@@ -1,9 +1,12 @@
 import argparse
-import shutil
+import signal
 
 import torch
+from rich import box
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TimeElapsedColumn
+from rich.style import Style
+from rich.table import Table
 
 from lib import const
 from lib.const import LOADING_TASK_STEPS
@@ -26,8 +29,7 @@ parser.add_argument(
 parser.add_argument("-A", "--no-metadata", action="store_true", help="No metadata")
 parser.add_argument("-a", "--author", default="VQGAN+CLIP", help="No metadata")
 parser.add_argument("-i", "--initial-image", help="Initial image")
-parser.add_argument("-T", "--target-images", help="Target images")
-parser.add_argument("-t", "--target-image", help="Target image")
+parser.add_argument("-t", "--target-images", help="Target images")
 parser.add_argument("-s", "--seed", type=int, default=torch.seed(), help="Seed")
 parser.add_argument(
     "-M", "--max-iterations", type=int, default=1000, help="Max iterations"
@@ -43,6 +45,7 @@ args.target_images = (
     if args.target_images
     else []
 )
+
 
 with Progress(
         SpinnerColumn(),
@@ -64,29 +67,55 @@ with Progress(
         total=args.max_iterations
     )
 
-    progress.log(f"Iterations : {args.max_iterations}")
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    progress.log(f"Device : [bold]{device}[/bold]")
-    progress.log("Text prompt:", args.prompts)
-    if args.target_images:
-        progress.log("Image prompts:", args.target_images)
+    parameter_table = Table(title=f"", box=box.MINIMAL)
+    parameter_table.add_column(f"Text prompt{'s' if len(args.prompts) > 1 else ''}", style="green")
+    parameter_table.add_column(f"Target image{'s' if len(args.target_images) > 1 else ''}", style="green")
+    parameter_table.add_column("Device", style="cyan")
+    parameter_table.add_column("Iterations", style="cyan")
+    parameter_table.add_column("Width", style="cyan")
+    parameter_table.add_column("Height", style="cyan")
+    parameter_table.add_column("Display frequency", style="cyan")
+    parameter_table.add_column("Seed", style="cyan")
 
+    row = []
+
+    progress.console.rule("[[bold cyan] Parameters [/bold cyan]]")
+    row.append(str(args.prompts))
+    if args.target_images:
+        row.append(str(args.target_images))
+    else:
+        row.append("-")
+
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    row.append(str(device))
+    row.append(str(args.max_iterations))
+
+    row.append(str(args.width))
+    row.append(str(args.height))
+    row.append(str(args.display_freq))
     torch.manual_seed(args.seed)
-    progress.log("Seed:", args.seed)
+    # progress.log("Seed:", args.seed)
+    row.append(str(args.seed))
     progress.advance(loading_task)
 
+    parameter_table.add_row(*row)
+    progress.log(parameter_table, justify="center")
+
+    progress.console.rule("")
     trainer = Trainer(args, progress, loading_task, device)
     trainer.preflight()
-    progress.update(loading_task, completed=LOADING_TASK_STEPS)
     progress.update(loading_task, visible=False)
+
+    progress.log("Loading [bold green]OK[/bold green]")
 
     progress.start_task(iteration_task)
     progress.update(iteration_task, visible=True)
+
     try:
         for iteration in range(args.max_iterations):
             trainer.train(iteration)
             progress.advance(iteration_task)
         progress.update(iteration_task, completed=args.max_iterations)
-
+        progress.console.out("Finished \( ﾟヮﾟ)/", style=Style(color="green", bold=True), highlight=False)
     except KeyboardInterrupt:
-        pass
+        progress.console.out("Canceled (っ ºДº)っ ︵ ⌨", style="bold", highlight=False)

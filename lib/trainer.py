@@ -26,7 +26,7 @@ from lib.const import (
     STEP_SIZE,
     NOISE_PROMPT_SEED,
     NOISE_PROMPT_WEIGHTS,
-    INIT_WEIGHT,
+    INIT_WEIGHT, LOADING_TASK_STEPS,
 )
 from lib.grad import clamp_with_grad, replace_grad
 from lib.image_utils import resize_image
@@ -77,7 +77,7 @@ class Trainer:
                      None, :, None, None
                      ]
 
-        progress.advance(loading_task)
+        progress.update(loading_task, completed=LOADING_TASK_STEPS)
 
         if args.initial_image:
             pil_image = Image.open(args.initial_image).convert("RGB")
@@ -125,7 +125,6 @@ class Trainer:
                 generator=gen
             )
             self.pMs.append(Prompt(embed, weight).to(device))
-        progress.advance(loading_task)
 
     def make_progress_dir(self):
         str_prompts = "_".join(self.prompts).replace(" ", "-")
