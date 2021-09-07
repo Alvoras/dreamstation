@@ -1,4 +1,6 @@
-model_names = [
+from dotenv import load_dotenv
+
+MODEL_NAMES = [
     "vqgan_imagenet_f16_16384",
     "vqgan_imagenet_f16_1024",
     "wikiart_1024",

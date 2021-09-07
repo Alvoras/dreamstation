@@ -51,8 +51,9 @@ class Trainer:
         self.width = args.width
         self.height = args.height
         self.max_iterations = args.max_iterations
-        self.progress_dir = self.make_progress_dir()
         self.input_images = args.initial_image or args.target_images
+        self.progress_dir = self.make_progress_dir()
+        self.progress_img_path = os.path.join("steps", "progress.png")
 
         self.vqgan_config = f"{self.model_name}.yaml"
         self.vqgan_checkpoint = f"{self.model_name}.ckpt"
@@ -212,10 +213,10 @@ class Trainer:
     def checkin(self, i, losses):
         losses_str = ", ".join(f"{loss.item():g}" for loss in losses)
         out = self.synth()
-        TF.to_pil_image(out[0].cpu()).save("steps/progress.png")
-        # self.add_stegano_data('steps/progress.png')
+        TF.to_pil_image(out[0].cpu()).save(self.progress_img_path)
+        # self.add_stegano_data(self.progress_img_path')
         if not self.no_metadata:
-            self.add_xmp_data("steps/progress.png", i)
+            self.add_xmp_data(self.progress_img_path, i)
 
     def ascend_txt(self, iteration):
         out = self.synth()

@@ -1,7 +1,9 @@
 import argparse
-import signal
+import os
 
 import torch
+from discord_webhook import DiscordWebhook, DiscordEmbed
+from dotenv import load_dotenv
 from rich import box
 from rich.console import Console
 from rich.progress import (
@@ -18,6 +20,8 @@ from lib import const
 from lib.const import LOADING_TASK_STEPS
 from lib.trainer import Trainer
 
+load_dotenv()
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-p", "--prompts", required=True, help="Prompts")
 parser.add_argument("-w", "--width", type=int, default=512, help="Width")
@@ -26,7 +30,7 @@ parser.add_argument(
     "-m",
     "--model",
     default="sflckr",
-    choices=const.model_names,
+    choices=const.MODEL_NAMES,
     help="Model",
 )
 parser.add_argument(
@@ -53,14 +57,14 @@ args.target_images = (
 )
 
 with Progress(
-    SpinnerColumn(),
-    TextColumn("[progress.description]{task.description}"),
-    BarColumn(),
-    TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-    TextColumn("{task.completed}/{task.total}"),
-    TimeElapsedColumn(),
-    TimeRemainingColumn(),
-    console=Console()
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TextColumn("{task.completed}/{task.total}"),
+        TimeElapsedColumn(),
+        TimeRemainingColumn(),
+        console=Console()
 ) as progress:
     loading_task = progress.add_task(f"Loading...", total=LOADING_TASK_STEPS)
 
@@ -139,3 +143,15 @@ with Console() as console:
             "[OK] ", end="", style=Style(color="green", bold=True), highlight=False
         )
         console.out("Finished \( ﾟヮﾟ)/", highlight=False)
+
+        if DISCORD_WEBHOOK := os.environ.get("DISCORD_WEBHOOK"):
+            webhook = DiscordWebhook(
+                url=DISCORD_WEBHOOK,
+                username="Result")
+            img_path = trainer.progress_img_path
+            with open(img_path, "rb") as f:
+                webhook.add_file(file=f.read(), filename="progress.jpg")
+
+            embed = DiscordEmbed(title="Finished job", description=f"{str(args.prompts)} ({args.width}x{args.height}) - {args.max_iterations} iterations", color="42ba96")
+            webhook.add_embed(embed)
+            response = webhook.execute()
