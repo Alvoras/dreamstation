@@ -235,7 +235,7 @@ class Trainer:
         )[:, :, :]
         img = np.transpose(img, (1, 2, 0))
         filename = str(
-            Path("steps", self.progress_dir, f"{iteration: 04}.png").absolute()
+            Path("steps", self.progress_dir, f"{iteration:04}.png").absolute()
         )
         imageio.imwrite(filename, np.array(img))
         if not self.no_metadata:
