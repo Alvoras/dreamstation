@@ -123,8 +123,18 @@ with Progress(
             trainer.train(iteration)
             progress.advance(iteration_task)
         progress.update(iteration_task, completed=args.max_iterations)
-        progress.console.out(
-            "Finished \( ﾟヮﾟ)/", style=Style(color="green", bold=True), highlight=False
-        )
+        canceled = False
     except KeyboardInterrupt:
-        progress.console.out("Canceled (っ ºДº)っ ︵ ⌨", style="bold", highlight=False)
+        canceled = True
+
+with Console() as console:
+    if canceled:
+        console.out(
+            "[!] ", end="", style=Style(color="yellow", bold=True), highlight=False
+        )
+        console.out("Canceled (っ ºДº)っ ︵ ⌨", highlight=False)
+    else:
+        console.out(
+            "[OK] ", end="", style=Style(color="green", bold=True), highlight=False
+        )
+        console.out("Finished \( ﾟヮﾟ)/", highlight=False)
