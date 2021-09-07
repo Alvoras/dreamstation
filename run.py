@@ -9,7 +9,7 @@ from rich.progress import (
     SpinnerColumn,
     TextColumn,
     BarColumn,
-    TimeElapsedColumn,
+    TimeElapsedColumn, TimeRemainingColumn,
 )
 from rich.style import Style
 from rich.table import Table
@@ -52,14 +52,15 @@ args.target_images = (
     else []
 )
 
-
 with Progress(
     SpinnerColumn(),
     TextColumn("[progress.description]{task.description}"),
     BarColumn(),
     TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+    TextColumn("{task.completed}/{task.total}"),
     TimeElapsedColumn(),
-    console=Console(),
+    TimeRemainingColumn(),
+    console=Console()
 ) as progress:
     loading_task = progress.add_task(f"Loading...", total=LOADING_TASK_STEPS)
 
@@ -101,7 +102,6 @@ with Progress(
     row.append(str(args.height))
     row.append(str(args.display_freq))
     torch.manual_seed(args.seed)
-    # progress.log("Seed:", args.seed)
     row.append(str(args.seed))
     progress.advance(loading_task)
 
@@ -122,6 +122,7 @@ with Progress(
         for iteration in range(args.max_iterations):
             trainer.train(iteration)
             progress.advance(iteration_task)
+            progress.update(iteration_task, current_iteration=iteration)
         progress.update(iteration_task, completed=args.max_iterations)
         canceled = False
     except KeyboardInterrupt:
