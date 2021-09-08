@@ -144,7 +144,8 @@ with Console() as console:
         )
         console.out("Finished \( ﾟヮﾟ)/", highlight=False)
 
-        if DISCORD_WEBHOOK := os.environ.get("DISCORD_WEBHOOK"):
+        DISCORD_WEBHOOK = os.environ.get("DISCORD_WEBHOOK")
+        if DISCORD_WEBHOOK:
             webhook = DiscordWebhook(
                 url=DISCORD_WEBHOOK,
                 username="Result")
