@@ -6,7 +6,7 @@ import imageio
 import libxmp
 import numpy as np
 import torch
-from PIL.Image import Image
+from PIL import Image
 from imgtag import ImgTag
 from omegaconf import OmegaConf
 from torch import nn, optim
