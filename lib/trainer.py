@@ -40,12 +40,12 @@ from lib.prompt_utils import parse_prompt
 
 
 class Trainer:
-    def __init__(self, args, progress, loading_task, device):
+    def __init__(self, args, prompt, progress, loading_task, device):
         self.progress = progress
+        self.prompt = prompt
         self.display_freq = args.display_freq
         self.author = args.author
         self.no_metadata = args.no_metadata
-        self.prompts = args.prompts
         self.model_name = args.model
         self.seed = args.seed
         self.width = args.width
@@ -107,13 +107,13 @@ class Trainer:
 
         self.pMs = []
 
-        for prompt in args.prompts:
-            txt, weight, stop = parse_prompt(prompt)
+        for prompt_chunk in self.prompt:
+            txt, weight, stop = parse_prompt(prompt_chunk)
             embed = self.perceptor.encode_text(clip.tokenize(txt).to(device)).float()
             self.pMs.append(Prompt(embed, weight, stop).to(device))
 
-        for prompt in args.target_images:
-            path, weight, stop = parse_prompt(prompt)
+        for prompt_chunk in args.target_images:
+            path, weight, stop = parse_prompt(prompt_chunk)
             img = resize_image(
                 Image.open(path).convert("RGB"), (self.side_x, self.side_y)
             )
@@ -129,7 +129,7 @@ class Trainer:
             self.pMs.append(Prompt(embed, weight).to(device))
 
     def make_progress_dir(self):
-        str_prompts = "_".join(self.prompts).replace(" ", "-")
+        str_prompts = "_".join(self.prompt).replace(" ", "-")
         return f"{str_prompts}_{self.width}x{self.height}_{self.max_iterations}it"
 
     def preflight(self):
@@ -169,7 +169,7 @@ class Trainer:
         image.xmp.append_array_item(
             libxmp.consts.XMP_NS_DC,
             "title",
-            "-".join(self.prompts),
+            "-".join(self.prompt),
             {"prop_array_is_ordered": True, "prop_value_is_array": True},
         )
         image.xmp.append_array_item(
@@ -200,7 +200,7 @@ class Trainer:
 
     def add_stegano_data(self, filename, iteration):
         data = {
-            "title": " | ".join(self.prompts) if self.prompts else None,
+            "title": " | ".join(self.prompt) if self.prompt else None,
             "creator": self.author,
             "iteration": iteration,
             "model": self.model_name,

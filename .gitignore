@@ -4,6 +4,9 @@ lib/vendor/
 steps
 !steps/.gitkeep
 
+remote
+sources
+
 .idea
 
 *.ckpt
