@@ -13,9 +13,7 @@ def make_table(prompts, *rows):
     parameter_table.add_column(
         f"Text prompt{'s' if len(prompts) > 1 else ''}", style="green"
     )
-    parameter_table.add_column(
-        f"Initial image", style="green"
-    )
+    parameter_table.add_column(f"Initial image", style="green")
     parameter_table.add_column("Device", style="cyan")
     parameter_table.add_column("Iterations", style="cyan")
     parameter_table.add_column("Width", style="cyan")
