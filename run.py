@@ -2,9 +2,7 @@ import argparse
 import os
 
 import torch
-from discord_webhook import DiscordWebhook, DiscordEmbed
 from dotenv import load_dotenv
-from rich import box
 from rich.console import Console
 from rich.progress import (
     Progress,
@@ -17,16 +15,41 @@ from rich.progress import (
 from rich.style import Style
 
 from lib import const
-from lib.const import LOADING_TASK_STEPS
+from lib.config import AUTHOR, DISCORD_WEBHOOK
+from lib.const import (
+    LOADING_TASK_STEPS,
+    AVAILABLE_RATIOS,
+    SIZE_PRESET_MAPPING,
+)
 from lib.prompt_utils import make_table
 from lib.trainer import Trainer
 
-load_dotenv()
-
 parser = argparse.ArgumentParser()
-parser.add_argument("-p", "--prompts", action="append", required=True, help="Prompts")
-parser.add_argument("-w", "--width", type=int, default=512, help="Width")
-parser.add_argument("-H", "--height", type=int, default=512, help="Height")
+mutually_exclusive = parser.add_mutually_exclusive_group(required=True)
+mutually_exclusive.add_argument("-p", "--prompts", action="append", help="Prompts")
+mutually_exclusive.add_argument(
+    "--test",
+    action="store_true",
+    help="Macro to test the program with default parameters",
+)
+parser.add_argument("-w", "--width", type=int, default=512, help="Image width")
+parser.add_argument("-H", "--height", type=int, default=512, help="Image height")
+parser.add_argument(
+    "-r",
+    "--ratio",
+    choices=AVAILABLE_RATIOS.keys(),
+    help="Aspect ratio to use when computing the smaller side",
+)
+parser.add_argument(
+    "--preset",
+    choices=SIZE_PRESET_MAPPING.keys(),
+    help="Image size preset to use",
+)
+parser.add_argument(
+    "--portrait",
+    action="store_true",
+    help="Use portrait orientation instead of landscape to get the smaller side",
+)
 parser.add_argument(
     "-m",
     "--model",
@@ -38,10 +61,24 @@ parser.add_argument(
     "-f", "--display-freq", type=int, default=10, help="Display frequency"
 )
 parser.add_argument(
+    "--discord-freq", type=int, default=50, help="Display frequency for Discord updates"
+)
+parser.add_argument(
     "-A",
     "--no-metadata",
     action="store_true",
-    help="Don't etch metadata via lsb stegano in the generated images",
+    help="Don't save metadata",
+)
+parser.add_argument(
+    "-S",
+    "--no-stegano",
+    action="store_true",
+    help="Don't etch metadata with LSB in the generated images",
+)
+parser.add_argument(
+    "--discord-update",
+    action="store_true",
+    help="Send a progress picture via discord every '--discord-freq' iterations. /!\ A DISCORD_WEBHOOK environment variable is needed /!\\",
 )
 parser.add_argument("--cpu", action="store_true", help="Force CPU usage")
 parser.add_argument(
@@ -53,13 +90,55 @@ parser.add_argument("-i", "--initial-image", help="Initial image")
 parser.add_argument("-t", "--target-images", help="Target images")
 parser.add_argument("-s", "--seed", type=int, default=torch.seed(), help="Seed")
 parser.add_argument(
-    "-M", "--max-iterations", type=int, default=1000, help="Max iterations"
+    "-M", "--max-iterations", type=int, default=300, help="Max iterations"
 )
 args = parser.parse_args()
 
+size_override = False
+has_preset = False
+
+# Disable discord update if no webhook has been specified
+if args.discord_update and not DISCORD_WEBHOOK:
+    args.discord_update = False
+
+if not args.preset:
+    if args.ratio:
+        size_override = True
+
+        if args.portrait:
+            args.width = int(args.height / AVAILABLE_RATIOS[args.ratio])
+        else:
+            args.height = int(args.width / AVAILABLE_RATIOS[args.ratio])
+
+    if args.height > args.width:
+        size_override = True
+        args.height = int(args.width * AVAILABLE_RATIOS[args.ratio])
+    elif args.width > args.height and args.portrait:
+        size_override = True
+        args.width = int(args.height * AVAILABLE_RATIOS[args.ratio])
+else:
+    has_preset = True
+    ratio = args.ratio if args.ratio else "1:1"
+    args.width = SIZE_PRESET_MAPPING[args.preset]
+    args.height = SIZE_PRESET_MAPPING[args.preset]
+
+    if args.portrait:
+        args.height = int(args.width * AVAILABLE_RATIOS[ratio])
+    else:
+        args.width = int(args.height * AVAILABLE_RATIOS[ratio])
+
+if args.test:
+    args.width = 64
+    args.height = 64
+    args.max_iterations = 3
+    args.display_freq = 1
+    args.prompts = ["test"]
+
 # Command line takes precedence
-if args.author == "VQGAN+CLIP":
-    args.author = os.getenv("AUTHOR", args.author)
+if (
+    args.author == "VQGAN+CLIP" and AUTHOR
+):  # Only if args.author is at its default value
+    args.author = AUTHOR
 
 if args.target_images:
     args.target_images = [line.strip() for line in args.target_images.split("|")]
@@ -110,16 +189,33 @@ for prompt in args.prompts:
         else:
             row.append("-")
 
-        row.append(str(args.seed))
         row.append(str(device))
         row.append(str(args.max_iterations))
         row.append(str(args.width))
         row.append(str(args.height))
         row.append(str(args.display_freq))
+        row.append(str(args.seed))
         progress.advance(loading_task)
 
         parameter_table = make_table(prompt, *row)
         progress.log(parameter_table, justify="center")
+
+        if size_override and args.portrait:
+            progress.log(
+                f"Width set to [bold]{args.width}px[/bold] (using ratio [bold cyan]{args.ratio}[/bold cyan])",
+                highlight=False,
+            )
+        elif size_override:
+            progress.log(
+                f"Height set to [bold]{args.height}px[/bold] (using ratio [bold cyan]{args.ratio}[/bold cyan])",
+                highlight=False,
+            )
+
+        if has_preset:
+            progress.log(
+                f"Preset override (using ratio [bold cyan]{args.ratio}[/bold cyan]) :\n\t Width = [bold]{args.width}px[/bold] \n\t Height = [bold]{args.height}px[/bold]",
+                highlight=False,
+            )
 
         progress.console.rule()
 
@@ -155,16 +251,4 @@ for prompt in args.prompts:
             )
             console.out("Finished \( ﾟヮﾟ)/", highlight=False)
 
-            DISCORD_WEBHOOK = os.environ.get("DISCORD_WEBHOOK")
-            if DISCORD_WEBHOOK:
-                webhook = DiscordWebhook(url=DISCORD_WEBHOOK, username="Paprika")
-                with open(trainer.progress_img_path, "rb") as f:
-                    webhook.add_file(file=f.read(), filename="progress.jpg")
-
-                embed = DiscordEmbed(
-                    title="Finished job",
-                    description=f"{str(prompt)} ({args.width}x{args.height}) - {args.max_iterations} iterations",
-                    color="42ba96",
-                )
-                webhook.add_embed(embed)
-                response = webhook.execute()
+            trainer.push_finish()

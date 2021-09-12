@@ -7,6 +7,7 @@ import libxmp
 import numpy as np
 import torch
 from PIL import Image
+from discord_webhook import DiscordWebhook, DiscordEmbed
 from imgtag import ImgTag
 from omegaconf import OmegaConf
 from torch import nn, optim
@@ -14,6 +15,8 @@ from torchvision import transforms
 import kornia.augmentation as K
 from stegano import lsb
 import json
+
+from lib.config import DISCORD_WEBHOOK
 
 sys.path.append(os.path.join("lib", "vendor", "taming-transformers"))
 from taming.models import cond_transformer, vqgan
@@ -43,16 +46,20 @@ class Trainer:
     def __init__(self, args, prompt, progress, loading_task, device):
         self.progress = progress
         self.prompt = prompt
+        self.discord_update = args.discord_update
         self.display_freq = args.display_freq
+        self.discord_freq = args.discord_freq
         self.author = args.author
+        self.no_stegano = args.no_stegano
         self.no_metadata = args.no_metadata
         self.model_name = args.model
         self.seed = args.seed
         self.width = args.width
         self.height = args.height
         self.max_iterations = args.max_iterations
-        self.input_images = args.initial_image or args.target_images
-        self.progress_dir = self.make_progress_dir()
+        self.initial_image = args.initial_image
+        self.target_images = args.target_images
+        self.progress_dir = self.get_progress_dir()
         self.progress_img_path = os.path.join("steps", "progress.png")
 
         self.vqgan_config = f"{self.model_name}.yaml"
@@ -128,12 +135,12 @@ class Trainer:
             )
             self.pMs.append(Prompt(embed, weight).to(device))
 
-    def make_progress_dir(self):
+    def get_progress_dir(self):
         str_prompts = "_".join(self.prompt).replace(" ", "-")
         return f"{str_prompts}_{self.width}x{self.height}_{self.max_iterations}it"
 
     def preflight(self):
-        progress_dir = self.make_progress_dir()
+        progress_dir = self.get_progress_dir()
         Path(f"steps/{progress_dir}").mkdir(parents=True, exist_ok=True)
 
     def load_vqgan_model(self):
@@ -169,7 +176,7 @@ class Trainer:
         image.xmp.append_array_item(
             libxmp.consts.XMP_NS_DC,
             "title",
-            "-".join(self.prompt),
+            " | ".join(self.prompt),
             {"prop_array_is_ordered": True, "prop_value_is_array": True},
         )
         image.xmp.append_array_item(
@@ -192,31 +199,38 @@ class Trainer:
         )
         image.xmp.append_array_item(
             libxmp.consts.XMP_NS_DC,
-            "input_images",
-            str(self.input_images),
+            "initial_image",
+            str(self.initial_image),
+            {"prop_array_is_ordered": True, "prop_value_is_array": True},
+        )
+        image.xmp.append_array_item(
+            libxmp.consts.XMP_NS_DC,
+            "target_images",
+            str(self.target_images),
             {"prop_array_is_ordered": True, "prop_value_is_array": True},
         )
         image.close()
 
     def add_stegano_data(self, filename, iteration):
         data = {
-            "title": " | ".join(self.prompt) if self.prompt else None,
+            "title": " | ".join(self.prompt),
             "creator": self.author,
             "iteration": iteration,
             "model": self.model_name,
             "seed": str(self.seed),
-            "input_images": self.input_images,
+            "initial_image": self.initial_image,
+            "target_images": str(self.target_images),
         }
         lsb.hide(filename, json.dumps(data)).save(filename)
 
     @torch.no_grad()
-    def checkin(self, i, losses):
-        losses_str = ", ".join(f"{loss.item():g}" for loss in losses)
+    def save_progress(self, iteration):
         out = self.synth()
         TF.to_pil_image(out[0].cpu()).save(self.progress_img_path)
-        # self.add_stegano_data(self.progress_img_path')
+        if not self.no_stegano:
+            self.add_stegano_data(self.progress_img_path, iteration)
         if not self.no_metadata:
-            self.add_xmp_data(self.progress_img_path, i)
+            self.add_xmp_data(self.progress_img_path, iteration)
 
     def ascend_txt(self, iteration):
         out = self.synth()
@@ -239,8 +253,10 @@ class Trainer:
             Path("steps", self.progress_dir, f"{iteration:04}.png").absolute()
         )
         imageio.imwrite(filename, np.array(img))
+        if not self.no_stegano:
+            self.add_stegano_data(self.progress_img_path, iteration)
+
         if not self.no_metadata:
-            # self.add_stegano_data(filename)
             self.add_xmp_data(filename, iteration)
         return result
 
@@ -248,12 +264,47 @@ class Trainer:
         self.opt.zero_grad()
         loss_all = self.ascend_txt(iteration)
         if iteration % self.display_freq == 0:
-            self.checkin(iteration, loss_all)
+            self.save_progress(iteration)
+        if self.discord_update:
+            if iteration > 0 and iteration % self.discord_freq == 0:
+                self.progress.log("Pushed progress to Discord")
+                self.push_progress(
+                    title=f"Checkpoint ({iteration}/{self.max_iterations})",
+                    description=f"{str(self.prompt)} ({self.width}x{self.height}) - {self.max_iterations} iterations | {self.progress.tasks[1].elapsed:.2f}s",
+                    color="84abcd",
+                )
+
         loss = sum(loss_all)
         loss.backward()
         self.opt.step()
         with torch.no_grad():
             self.z.copy_(self.z.maximum(self.z_min).minimum(self.z_max))
+
+    def push_progress(
+        self, title="", description="", color="42ba96", username="Paprika"
+    ):
+        if DISCORD_WEBHOOK:
+            webhook = DiscordWebhook(url=DISCORD_WEBHOOK, username=username)
+            with open(self.progress_img_path, "rb") as f:
+                webhook.add_file(file=f.read(), filename="progress.jpg")
+
+            embed = DiscordEmbed(
+                title=title,
+                description=description,
+                color=color,
+            )
+
+            webhook.add_embed(embed)
+
+            # TODO: log failure
+            # response = webhook.execute()
+            webhook.execute()
+
+    def push_finish(self):
+        self.push_progress(
+            title="Job done",
+            description=f"{str(self.prompt)} ({self.width}x{self.height}) - {self.max_iterations} iterations | {self.progress.tasks[1].elapsed:.2f}s",
+        )
 
 
 class MakeCutouts(nn.Module):
