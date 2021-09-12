@@ -18,6 +18,7 @@ from rich.table import Table
 
 from lib import const
 from lib.const import LOADING_TASK_STEPS
+from lib.prompt_utils import make_table
 from lib.trainer import Trainer
 
 load_dotenv()
@@ -75,26 +76,12 @@ with Progress(
         total=args.max_iterations,
     )
 
-    parameter_table = Table(title="", box=box.MINIMAL)
-    parameter_table.add_column(
-        f"Text prompt{'s' if len(args.prompts) > 1 else ''}", style="green"
-    )
-    parameter_table.add_column(
-        f"Target image{'s' if len(args.target_images) > 1 else ''}", style="green"
-    )
-    parameter_table.add_column("Device", style="cyan")
-    parameter_table.add_column("Iterations", style="cyan")
-    parameter_table.add_column("Width", style="cyan")
-    parameter_table.add_column("Height", style="cyan")
-    parameter_table.add_column("Display frequency", style="cyan")
-    parameter_table.add_column("Seed", style="cyan")
-
     row = []
 
     progress.console.rule("[[bold cyan] Parameters [/bold cyan]]")
     row.append(str(args.prompts))
-    if args.target_images:
-        row.append(str(args.target_images))
+    if args.initial_image:
+        row.append(str(args.initial_image))
     else:
         row.append("-")
 
@@ -109,10 +96,10 @@ with Progress(
     row.append(str(args.seed))
     progress.advance(loading_task)
 
-    parameter_table.add_row(*row)
+    parameter_table = make_table(args.prompts, *row)
     progress.log(parameter_table, justify="center")
 
-    progress.console.rule("")
+    progress.console.rule()
     trainer = Trainer(args, progress, loading_task, device)
     trainer.preflight()
     progress.update(loading_task, visible=False)
