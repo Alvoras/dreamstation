@@ -1,5 +1,6 @@
 import argparse
 import os
+from math import ceil
 
 import torch
 from dotenv import load_dotenv
@@ -106,16 +107,16 @@ if not args.preset:
         size_override = True
 
         if args.portrait:
-            args.width = int(args.height / AVAILABLE_RATIOS[args.ratio])
+            args.width = ceil(args.height / AVAILABLE_RATIOS[args.ratio])
         else:
-            args.height = int(args.width / AVAILABLE_RATIOS[args.ratio])
+            args.height = ceil(args.width / AVAILABLE_RATIOS[args.ratio])
 
     if args.height > args.width:
         size_override = True
-        args.height = int(args.width * AVAILABLE_RATIOS[args.ratio])
+        args.height = ceil(args.width * AVAILABLE_RATIOS[args.ratio])
     elif args.width > args.height and args.portrait:
         size_override = True
-        args.width = int(args.height * AVAILABLE_RATIOS[args.ratio])
+        args.width = ceil(args.height * AVAILABLE_RATIOS[args.ratio])
 else:
     has_preset = True
     ratio = args.ratio if args.ratio else "1:1"
@@ -123,9 +124,9 @@ else:
     args.height = SIZE_PRESET_MAPPING[args.preset]
 
     if args.portrait:
-        args.height = int(args.width * AVAILABLE_RATIOS[ratio])
+        args.height = ceil(args.width * AVAILABLE_RATIOS[ratio])
     else:
-        args.width = int(args.height * AVAILABLE_RATIOS[ratio])
+        args.width = ceil(args.height * AVAILABLE_RATIOS[ratio])
 
 if args.test:
     args.width = 64
