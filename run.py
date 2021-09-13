@@ -33,6 +33,7 @@ mutually_exclusive.add_argument(
     action="store_true",
     help="Macro to test the program with default parameters",
 )
+parser.add_argument("-o", "--out", default="steps", help="Output directory")
 parser.add_argument("-w", "--width", type=int, default=512, help="Image width")
 parser.add_argument("-H", "--height", type=int, default=512, help="Image height")
 parser.add_argument(

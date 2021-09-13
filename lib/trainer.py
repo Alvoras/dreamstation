@@ -46,6 +46,7 @@ class Trainer:
     def __init__(self, args, prompt, progress, loading_task, device):
         self.progress = progress
         self.prompt = prompt
+        self.args = args
         self.discord_update = args.discord_update
         self.display_freq = args.display_freq
         self.discord_freq = args.discord_freq
@@ -60,7 +61,7 @@ class Trainer:
         self.initial_image = args.initial_image
         self.target_images = args.target_images
         self.progress_dir = self.get_progress_dir()
-        self.progress_img_path = os.path.join("steps", "progress.png")
+        self.progress_img_path = os.path.join(self.args.out, "progress.png")
 
         self.vqgan_config = f"{self.model_name}.yaml"
         self.vqgan_checkpoint = f"{self.model_name}.ckpt"
@@ -141,7 +142,7 @@ class Trainer:
 
     def preflight(self):
         progress_dir = self.get_progress_dir()
-        Path(f"steps/{progress_dir}").mkdir(parents=True, exist_ok=True)
+        Path(f"{self.args.out}/{progress_dir}").mkdir(parents=True, exist_ok=True)
 
     def load_vqgan_model(self):
         config = OmegaConf.load(self.vqgan_config)
@@ -250,7 +251,7 @@ class Trainer:
         )[:, :, :]
         img = np.transpose(img, (1, 2, 0))
         filename = str(
-            Path("steps", self.progress_dir, f"{iteration:04}.png").absolute()
+            Path(self.args.out, self.progress_dir, f"{iteration:04}.png").absolute()
         )
         imageio.imwrite(filename, np.array(img))
         if not self.no_stegano:
