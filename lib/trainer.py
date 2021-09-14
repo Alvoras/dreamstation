@@ -255,7 +255,7 @@ class Trainer:
         )
         imageio.imwrite(filename, np.array(img))
         if not self.no_stegano:
-            self.add_stegano_data(self.progress_img_path, iteration)
+            self.add_stegano_data(filename, iteration)
 
         if not self.no_metadata:
             self.add_xmp_data(filename, iteration)
