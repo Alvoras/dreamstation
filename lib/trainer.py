@@ -138,7 +138,7 @@ class Trainer:
 
     def get_progress_dir(self):
         str_prompts = "_".join(self.prompt).replace(" ", "-")
-        return f"{str_prompts}_{self.width}x{self.height}_{self.max_iterations}it"
+        return f"{str_prompts}_{self.width}x{self.height}_{self.max_iterations}it_{self.args.seed}"
 
     def preflight(self):
         progress_dir = self.get_progress_dir()
