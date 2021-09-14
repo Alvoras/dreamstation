@@ -16,6 +16,7 @@ def make_table(prompts, *rows):
     parameter_table.add_column(f"Initial image", style="green")
     parameter_table.add_column("Device", style="cyan")
     parameter_table.add_column("Iterations", style="cyan")
+    parameter_table.add_column("Repeats", style="cyan")
     parameter_table.add_column("Width", style="cyan")
     parameter_table.add_column("Height", style="cyan")
     parameter_table.add_column("Display frequency", style="cyan")
