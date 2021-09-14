@@ -78,6 +78,7 @@ parser.add_argument(
     help="Don't etch metadata with LSB in the generated images",
 )
 parser.add_argument(
+    "-u",
     "--discord-update",
     action="store_true",
     help="Send a progress picture via discord every '--discord-freq' iterations. /!\ A DISCORD_WEBHOOK environment variable is needed /!\\",
