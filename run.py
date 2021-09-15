@@ -1,9 +1,6 @@
 import argparse
-import os
 from math import ceil
 
-import torch
-from dotenv import load_dotenv
 from rich.console import Console
 from rich.progress import (
     Progress,
@@ -23,11 +20,12 @@ from lib.const import (
     SIZE_PRESET_MAPPING,
 )
 from lib.prompt_utils import make_table
+from lib.seed import make_seed_from_str
 from lib.trainer import Trainer
 
 parser = argparse.ArgumentParser()
 mutually_exclusive = parser.add_mutually_exclusive_group(required=True)
-mutually_exclusive.add_argument("-p", "--prompts", action="append", help="Prompts")
+mutually_exclusive.add_argument("-p", "--prompt", action="append", help="Prompt")
 mutually_exclusive.add_argument(
     "--test",
     action="store_true",
@@ -78,6 +76,11 @@ parser.add_argument(
     help="Don't etch metadata with LSB in the generated images",
 )
 parser.add_argument(
+    "--keep-seed",
+    action="store_true",
+    help="Generate a seed only once and keep it for each prompt",
+)
+parser.add_argument(
     "-u",
     "--discord-update",
     action="store_true",
@@ -91,8 +94,17 @@ parser.add_argument(
 parser.add_argument("-a", "--author", default="VQGAN+CLIP", help="No metadata")
 parser.add_argument("-i", "--initial-image", help="Initial image")
 parser.add_argument("-t", "--target-images", help="Target images")
-parser.add_argument("-s", "--seed", type=int, default=torch.seed(), help="Seed")
-parser.add_argument("--repeat", type=int, default=1, help="Repeat the specified prompt(s) N number of times")
+parser.add_argument("-s", "--seed", type=int, help="Seed")
+parser.add_argument(
+    "--seed-from",
+    help="Generate an (almost) unique seed from the given string. Implies --keep-seed",
+)
+parser.add_argument(
+    "--repeat",
+    type=int,
+    default=1,
+    help="Repeat the specified prompt(s) N number of times",
+)
 parser.add_argument(
     "-M", "--max-iterations", type=int, default=300, help="Max iterations"
 )
@@ -100,6 +112,13 @@ args = parser.parse_args()
 
 size_override = False
 has_preset = False
+
+if args.test:
+    args.width = 64
+    args.height = 64
+    args.max_iterations = 3
+    args.display_freq = 1
+    args.prompt = ["test"]
 
 # Disable discord update if no webhook has been specified
 if args.discord_update and not DISCORD_WEBHOOK:
@@ -131,13 +150,6 @@ else:
     else:
         args.width = ceil(args.height * AVAILABLE_RATIOS[ratio])
 
-if args.test:
-    args.width = 64
-    args.height = 64
-    args.max_iterations = 3
-    args.display_freq = 1
-    args.prompts = ["test"]
-
 # Command line takes precedence
 if (
     args.author == "VQGAN+CLIP" and AUTHOR
@@ -147,8 +159,8 @@ if (
 if args.target_images:
     args.target_images = [line.strip() for line in args.target_images.split("|")]
 
-for idx, prompt in enumerate(args.prompts):
-    args.prompts[idx] = [line.strip() for line in prompt.split("|")]
+for idx, chunk in enumerate(args.prompt):
+    args.prompt[idx] = [line.strip() for line in chunk.split("|")]
 
 args.target_images = (
     [line.strip() for line in args.target_images.split("|")]
@@ -156,17 +168,31 @@ args.target_images = (
     else []
 )
 
-if args.cpu:
-    device = "cpu"
-elif args.gpu:
-    device = args.gpu
-else:
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-torch.manual_seed(args.seed)
-
 for _ in range(args.repeat):
-    for prompt in args.prompts:
+    for prompt in args.prompt:
+        # We need to import torch here to refresh it completely
+        # Failing to do so results in unexpected behaviour, such as the same seed not producing the same output
+        # when used multiple time in a row
+        import torch
+
+        if args.cpu:
+            device = "cpu"
+        elif args.gpu:
+            device = args.gpu
+        else:
+            device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+        if args.seed or args.seed_from:
+            args.keep_seed = True
+
+        if args.seed_from:
+            args.seed = make_seed_from_str(args.seed_from)
+        elif not args.seed:
+            args.seed = torch.seed()
+
+        # Using --seed or --seed-from implies --keep-seed
+        torch.manual_seed(args.seed)
+
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -203,7 +229,7 @@ for _ in range(args.repeat):
             row.append(str(args.seed))
             progress.advance(loading_task)
 
-            parameter_table = make_table(prompt, *row)
+            parameter_table = make_table(*row)
             progress.log(parameter_table, justify="center")
 
             if size_override and args.portrait:
@@ -248,13 +274,25 @@ for _ in range(args.repeat):
         with Console() as console:
             if canceled:
                 console.out(
-                    "[!] ", end="", style=Style(color="yellow", bold=True), highlight=False
+                    "[!] ",
+                    end="",
+                    style=Style(color="yellow", bold=True),
+                    highlight=False,
                 )
                 console.out("Canceled (っ ºДº)っ ︵ ⌨", highlight=False)
             else:
                 console.out(
-                    "[OK] ", end="", style=Style(color="green", bold=True), highlight=False
+                    "[OK] ",
+                    end="",
+                    style=Style(color="green", bold=True),
+                    highlight=False,
                 )
                 console.out("Finished \( ﾟヮﾟ)/", highlight=False)
 
                 trainer.push_finish()
+
+        # Refresh seed if needed for each prompt
+        # NB : --seed-from and --seed implies --keep-seed
+        if not args.keep_seed:
+            args.seed = torch.seed()
+            torch.manual_seed(args.seed)

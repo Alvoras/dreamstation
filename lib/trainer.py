@@ -47,24 +47,24 @@ class Trainer:
         self.progress = progress
         self.prompt = prompt
         self.args = args
-        self.discord_update = args.discord_update
-        self.display_freq = args.display_freq
-        self.discord_freq = args.discord_freq
-        self.author = args.author
-        self.no_stegano = args.no_stegano
-        self.no_metadata = args.no_metadata
-        self.model_name = args.model
-        self.seed = args.seed
-        self.width = args.width
-        self.height = args.height
-        self.max_iterations = args.max_iterations
-        self.initial_image = args.initial_image
-        self.target_images = args.target_images
+        # self.discord_update = args.discord_update
+        # self.display_freq = args.display_freq
+        # self.discord_freq = args.discord_freq
+        # self.author = args.author
+        # self.no_stegano = args.no_stegano
+        # self.no_metadata = args.no_metadata
+        # self.args.model = args.model
+        # self.seed = args.seed
+        # self.width = args.width
+        # self.height = args.height
+        # self.max_iterations = args.max_iterations
+        # self.initial_image = args.initial_image
+        # self.target_images = args.target_images
         self.progress_dir = self.get_progress_dir()
         self.progress_img_path = os.path.join(self.args.out, "progress.png")
 
-        self.vqgan_config = f"{self.model_name}.yaml"
-        self.vqgan_checkpoint = f"{self.model_name}.ckpt"
+        self.vqgan_config = f"{self.args.model}.yaml"
+        self.vqgan_checkpoint = f"{self.args.model}.ckpt"
 
         self.model = self.load_vqgan_model().to(device)
         progress.advance(loading_task)
@@ -137,8 +137,8 @@ class Trainer:
             self.pMs.append(Prompt(embed, weight).to(device))
 
     def get_progress_dir(self):
-        str_prompts = "_".join(self.prompt).replace(" ", "-")
-        return f"{str_prompts}_{self.width}x{self.height}_{self.max_iterations}it_{self.args.seed}"
+        processed_prompt = "_".join(self.prompt).replace(" ", "-")
+        return f"{processed_prompt}_{self.args.width}x{self.args.height}_{self.args.max_iterations}it_{self.args.seed}"
 
     def preflight(self):
         progress_dir = self.get_progress_dir()
@@ -171,7 +171,7 @@ class Trainer:
         image.xmp.append_array_item(
             libxmp.consts.XMP_NS_DC,
             "creator",
-            self.author,
+            self.args.author,
             {"prop_array_is_ordered": True, "prop_value_is_array": True},
         )
         image.xmp.append_array_item(
@@ -189,25 +189,25 @@ class Trainer:
         image.xmp.append_array_item(
             libxmp.consts.XMP_NS_DC,
             "model",
-            self.model_name,
+            self.args.model,
             {"prop_array_is_ordered": True, "prop_value_is_array": True},
         )
         image.xmp.append_array_item(
             libxmp.consts.XMP_NS_DC,
             "seed",
-            str(self.seed),
+            str(self.args.seed),
             {"prop_array_is_ordered": True, "prop_value_is_array": True},
         )
         image.xmp.append_array_item(
             libxmp.consts.XMP_NS_DC,
             "initial_image",
-            str(self.initial_image),
+            str(self.args.initial_image),
             {"prop_array_is_ordered": True, "prop_value_is_array": True},
         )
         image.xmp.append_array_item(
             libxmp.consts.XMP_NS_DC,
             "target_images",
-            str(self.target_images),
+            str(self.args.target_images),
             {"prop_array_is_ordered": True, "prop_value_is_array": True},
         )
         image.close()
@@ -215,12 +215,12 @@ class Trainer:
     def add_stegano_data(self, filename, iteration):
         data = {
             "title": " | ".join(self.prompt),
-            "creator": self.author,
+            "creator": self.args.author,
             "iteration": iteration,
-            "model": self.model_name,
-            "seed": str(self.seed),
-            "initial_image": self.initial_image,
-            "target_images": str(self.target_images),
+            "model": self.args.model,
+            "seed": str(self.args.seed),
+            "initial_image": self.args.initial_image,
+            "target_images": str(self.args.target_images),
         }
         lsb.hide(filename, json.dumps(data)).save(filename)
 
@@ -228,9 +228,9 @@ class Trainer:
     def save_progress(self, iteration):
         out = self.synth()
         TF.to_pil_image(out[0].cpu()).save(self.progress_img_path)
-        if not self.no_stegano:
+        if not self.args.no_stegano:
             self.add_stegano_data(self.progress_img_path, iteration)
-        if not self.no_metadata:
+        if not self.args.no_metadata:
             self.add_xmp_data(self.progress_img_path, iteration)
 
     def ascend_txt(self, iteration):
@@ -254,24 +254,24 @@ class Trainer:
             Path(self.args.out, self.progress_dir, f"{iteration:04}.png").absolute()
         )
         imageio.imwrite(filename, np.array(img))
-        if not self.no_stegano:
+        if not self.args.no_stegano:
             self.add_stegano_data(filename, iteration)
 
-        if not self.no_metadata:
+        if not self.args.no_metadata:
             self.add_xmp_data(filename, iteration)
         return result
 
     def train(self, iteration):
         self.opt.zero_grad()
         loss_all = self.ascend_txt(iteration)
-        if iteration % self.display_freq == 0:
+        if iteration % self.args.display_freq == 0:
             self.save_progress(iteration)
-        if self.discord_update:
-            if iteration > 0 and iteration % self.discord_freq == 0:
+        if self.args.discord_update:
+            if iteration > 0 and iteration % self.args.discord_freq == 0:
                 self.progress.log("Pushed progress to Discord")
                 self.push_progress(
-                    title=f"Checkpoint ({iteration}/{self.max_iterations})",
-                    description=f"{str(self.prompt)} ({self.width}x{self.height}) - {self.max_iterations} iterations | {self.progress.tasks[1].elapsed:.2f}s",
+                    title=f"Checkpoint ({iteration}/{self.args.max_iterations})",
+                    description=f"{str(self.prompt)} ({self.args.width}x{self.args.height}) - {self.args.max_iterations} iterations | {self.progress.tasks[1].elapsed:.2f}s",
                     color="84abcd",
                 )
 
@@ -284,7 +284,7 @@ class Trainer:
     def push_progress(
         self, title="", description="", color="42ba96", username="Paprika"
     ):
-        if DISCORD_WEBHOOK:
+        if DISCORD_WEBHOOK and self.args.discord_update:
             webhook = DiscordWebhook(url=DISCORD_WEBHOOK, username=username)
             with open(self.progress_img_path, "rb") as f:
                 webhook.add_file(file=f.read(), filename="progress.jpg")
@@ -304,7 +304,7 @@ class Trainer:
     def push_finish(self):
         self.push_progress(
             title="Job done",
-            description=f"{str(self.prompt)} ({self.width}x{self.height}) - {self.max_iterations} iterations | {self.progress.tasks[1].elapsed:.2f}s",
+            description=f"{str(self.prompt)} ({self.args.width}x{self.args.height}) - {self.args.max_iterations} iterations | {self.progress.tasks[1].elapsed:.2f}s",
         )
 
 
