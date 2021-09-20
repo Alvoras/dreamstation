@@ -162,12 +162,6 @@ if args.target_images:
 for idx, chunk in enumerate(args.prompt):
     args.prompt[idx] = [line.strip() for line in chunk.split("|")]
 
-args.target_images = (
-    [line.strip() for line in args.target_images.split("|")]
-    if args.target_images
-    else []
-)
-
 for _ in range(args.repeat):
     for prompt in args.prompt:
         # We need to import torch here to refresh it completely
