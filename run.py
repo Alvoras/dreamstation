@@ -156,8 +156,7 @@ if (
 ):  # Only if args.author is at its default value
     args.author = AUTHOR
 
-if args.target_images:
-    args.target_images = [line.strip() for line in args.target_images.split("|")]
+args.target_images = [line.strip() for line in args.target_images.split("|")] if args.target_images else []
 
 for idx, chunk in enumerate(args.prompt):
     args.prompt[idx] = [line.strip() for line in chunk.split("|")]
