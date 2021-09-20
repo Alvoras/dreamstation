@@ -1,4 +1,4 @@
-from PIL.Image import Image
+from PIL import Image
 
 
 def resize_image(image, out_size):
