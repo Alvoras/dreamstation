@@ -47,19 +47,6 @@ class Trainer:
         self.progress = progress
         self.prompt = prompt
         self.args = args
-        # self.discord_update = args.discord_update
-        # self.display_freq = args.display_freq
-        # self.discord_freq = args.discord_freq
-        # self.author = args.author
-        # self.no_stegano = args.no_stegano
-        # self.no_metadata = args.no_metadata
-        # self.args.model = args.model
-        # self.seed = args.seed
-        # self.width = args.width
-        # self.height = args.height
-        # self.max_iterations = args.max_iterations
-        # self.initial_image = args.initial_image
-        # self.target_images = args.target_images
         self.progress_dir = self.get_progress_dir()
         self.progress_img_path = os.path.join(self.args.out, "progress.png")
 
