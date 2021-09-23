@@ -1,6 +1,11 @@
-import math
-
 import whirlpool
+
+
+def make_seed_from_file(filepath):
+    with open(filepath) as f:
+        content = f.read()
+
+    return make_seed_from_str(content)
 
 
 def make_seed_from_str(str_seed):

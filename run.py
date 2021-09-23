@@ -20,7 +20,7 @@ from lib.const import (
     SIZE_PRESET_MAPPING,
 )
 from lib.prompt_utils import make_table
-from lib.seed import make_seed_from_str
+from lib.seed import make_seed_from_str, make_seed_from_file
 from lib.trainer import Trainer
 
 parser = argparse.ArgumentParser()
@@ -97,7 +97,11 @@ parser.add_argument("-t", "--target-images", help="Target images")
 parser.add_argument("-s", "--seed", type=int, help="Seed")
 parser.add_argument(
     "--seed-from",
-    help="Generate an (almost) unique seed from the given string. Implies --keep-seed",
+    help="Generate an (quasi) unique seed from the given string. Implies --keep-seed",
+)
+parser.add_argument(
+    "--seed-from-file",
+    help="Generate a (quasi) unique seed from the given file. Implies --keep-seed",
 )
 parser.add_argument(
     "--repeat",
@@ -125,20 +129,24 @@ if args.discord_update and not DISCORD_WEBHOOK:
     args.discord_update = False
 
 if not args.preset:
-    if args.ratio:
+    ratio = args.ratio
+
+    if ratio:
         size_override = True
 
         if args.portrait:
-            args.width = ceil(args.height / AVAILABLE_RATIOS[args.ratio])
+            args.width = ceil(args.height / AVAILABLE_RATIOS[ratio])
         else:
-            args.height = ceil(args.width / AVAILABLE_RATIOS[args.ratio])
+            args.height = ceil(args.width / AVAILABLE_RATIOS[ratio])
+    else:
+        ratio = "1:1"
 
     if args.height > args.width:
         size_override = True
-        args.height = ceil(args.width * AVAILABLE_RATIOS[args.ratio])
+        args.height = ceil(args.width * AVAILABLE_RATIOS[ratio])
     elif args.width > args.height and args.portrait:
         size_override = True
-        args.width = ceil(args.height * AVAILABLE_RATIOS[args.ratio])
+        args.width = ceil(args.height * AVAILABLE_RATIOS[ratio])
 else:
     has_preset = True
     ratio = args.ratio if args.ratio else "1:1"
@@ -180,6 +188,8 @@ for _ in range(args.repeat):
 
         if args.seed_from:
             args.seed = make_seed_from_str(args.seed_from)
+        elif args.seed_from_file:
+            args.seed = make_seed_from_file(args.seed_from_file)
         elif not args.seed:
             args.seed = torch.seed()
 
