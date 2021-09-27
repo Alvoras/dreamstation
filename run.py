@@ -193,6 +193,8 @@ for repeat_round in range(args.repeat):
             seed = make_seed_from_file(args.seed_from_file)
         elif not args.seed:
             seed = torch.seed()
+        else:
+            seed = args.seed
 
         # Using --seed or --seed-from implies --keep-seed
         torch.manual_seed(seed)
