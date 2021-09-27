@@ -169,12 +169,16 @@ args.target_images = [line.strip() for line in args.target_images.split("|")] if
 for idx, chunk in enumerate(args.prompt):
     args.prompt[idx] = [line.strip() for line in chunk.split("|")]
 
-for _ in range(args.repeat):
+if args.seed or args.seed_from:
+    args.keep_seed = True
+
+for repeat_round in range(args.repeat):
     for prompt in args.prompt:
         # We need to import torch here to refresh it completely
         # Failing to do so results in unexpected behaviour, such as the same seed not producing the same output
         # when used multiple time in a row
         import torch
+        seed = -1
 
         if args.cpu:
             device = "cpu"
@@ -183,18 +187,15 @@ for _ in range(args.repeat):
         else:
             device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-        if args.seed or args.seed_from:
-            args.keep_seed = True
-
         if args.seed_from:
-            args.seed = make_seed_from_str(args.seed_from)
+            seed = make_seed_from_str(args.seed_from)
         elif args.seed_from_file:
-            args.seed = make_seed_from_file(args.seed_from_file)
+            seed = make_seed_from_file(args.seed_from_file)
         elif not args.seed:
-            args.seed = torch.seed()
+            seed = torch.seed()
 
         # Using --seed or --seed-from implies --keep-seed
-        torch.manual_seed(args.seed)
+        torch.manual_seed(seed)
 
         with Progress(
             SpinnerColumn(),
@@ -225,11 +226,11 @@ for _ in range(args.repeat):
 
             row.append(str(device))
             row.append(str(args.max_iterations))
-            row.append(str(args.repeat))
+            row.append(f"{repeat_round+1}/{args.repeat}")
             row.append(str(args.width))
             row.append(str(args.height))
             row.append(str(args.display_freq))
-            row.append(str(args.seed))
+            row.append(str(seed))
             progress.advance(loading_task)
 
             parameter_table = make_table(*row)
@@ -297,5 +298,5 @@ for _ in range(args.repeat):
         # Refresh seed if needed for each prompt
         # NB : --seed-from and --seed implies --keep-seed
         if not args.keep_seed:
-            args.seed = torch.seed()
-            torch.manual_seed(args.seed)
+            seed = torch.seed()
+            torch.manual_seed(seed)
