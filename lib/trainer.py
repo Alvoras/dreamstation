@@ -43,10 +43,11 @@ from lib.prompt_utils import parse_prompt
 
 
 class Trainer:
-    def __init__(self, args, prompt, progress, loading_task, device):
+    def __init__(self, args, prompt, seed, progress, loading_task, device):
         self.progress = progress
         self.prompt = prompt
         self.args = args
+        self.seed = seed
         self.progress_dir = self.get_progress_dir()
         self.progress_img_path = os.path.join(self.args.out, "progress.png")
 

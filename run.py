@@ -257,7 +257,7 @@ for repeat_round in range(args.repeat):
 
             progress.console.rule()
 
-            trainer = Trainer(args, prompt, progress, loading_task, device)
+            trainer = Trainer(args, prompt, seed, progress, loading_task, device)
             trainer.preflight()
             # progress.update(loading_task, visible=False)
 
