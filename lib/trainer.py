@@ -165,6 +165,12 @@ class Trainer:
         image.xmp.append_array_item(
             libxmp.consts.XMP_NS_DC,
             "title",
+            str(iteration),
+            {"prop_array_is_ordered": True, "prop_value_is_array": True},
+        )
+        image.xmp.append_array_item(
+            libxmp.consts.XMP_NS_DC,
+            "prompt",
             " | ".join(self.prompt),
             {"prop_array_is_ordered": True, "prop_value_is_array": True},
         )
@@ -202,7 +208,8 @@ class Trainer:
 
     def add_stegano_data(self, filename, iteration):
         data = {
-            "title": " | ".join(self.prompt),
+            "title": str(iteration),
+            "prompt": " | ".join(self.prompt),
             "creator": self.args.author,
             "iteration": iteration,
             "model": self.args.model,
