@@ -126,7 +126,7 @@ class Trainer:
 
     def get_progress_dir(self):
         processed_prompt = "_".join(self.prompt).replace(" ", "-")
-        return f"{processed_prompt}_{self.args.width}x{self.args.height}_{self.args.max_iterations}it_{self.args.seed}"
+        return f"{processed_prompt}_{self.args.width}x{self.args.height}_{self.args.max_iterations}it_{self.seed}"
 
     def preflight(self):
         progress_dir = self.get_progress_dir()
@@ -189,7 +189,7 @@ class Trainer:
         image.xmp.append_array_item(
             libxmp.consts.XMP_NS_DC,
             "seed",
-            str(self.args.seed),
+            str(self.seed),
             {"prop_array_is_ordered": True, "prop_value_is_array": True},
         )
         image.xmp.append_array_item(
@@ -213,7 +213,7 @@ class Trainer:
             "creator": self.args.author,
             "iteration": iteration,
             "model": self.args.model,
-            "seed": str(self.args.seed),
+            "seed": str(self.seed),
             "initial_image": self.args.initial_image,
             "target_images": str(self.args.target_images),
         }
