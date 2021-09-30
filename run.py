@@ -240,18 +240,18 @@ for repeat_round in range(args.repeat):
 
             if size_override and args.portrait:
                 progress.log(
-                    f"Width set to [bold]{args.width}px[/bold] (using ratio [bold cyan]{args.ratio}[/bold cyan])",
+                    f"Width set to [bold]{args.width}px[/bold] (using ratio [bold cyan]{ratio}[/bold cyan])",
                     highlight=False,
                 )
             elif size_override:
                 progress.log(
-                    f"Height set to [bold]{args.height}px[/bold] (using ratio [bold cyan]{args.ratio}[/bold cyan])",
+                    f"Height set to [bold]{args.height}px[/bold] (using ratio [bold cyan]{ratio}[/bold cyan])",
                     highlight=False,
                 )
 
             if has_preset:
                 progress.log(
-                    f"Preset override (using ratio [bold cyan]{args.ratio}[/bold cyan]) :\n\t Width = [bold]{args.width}px[/bold] \n\t Height = [bold]{args.height}px[/bold]",
+                    f"Preset override (using ratio [bold cyan]{ratio}[/bold cyan]) :\n\t Width = [bold]{args.width}px[/bold] \n\t Height = [bold]{args.height}px[/bold]",
                     highlight=False,
                 )
 
