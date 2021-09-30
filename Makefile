@@ -34,6 +34,10 @@ install_pip:
 venv:
 	virtualenv venv --python=`which python3.7`
 
+## test : [RUN] Start a test run to test installation
+test:
+	./venv/bin/python run.py -p "test" -M1 -w 64
+
 ## req : [DEV] Freeze pyhton requirements into requirements.txt
 req:
 	./venv/bin/pip freeze | grep -v "pkg-resources" > requirements.txt

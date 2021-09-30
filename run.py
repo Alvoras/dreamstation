@@ -164,7 +164,11 @@ if (
 ):  # Only if args.author is at its default value
     args.author = AUTHOR
 
-args.target_images = [line.strip() for line in args.target_images.split("|")] if args.target_images else []
+args.target_images = (
+    [line.strip() for line in args.target_images.split("|")]
+    if args.target_images
+    else []
+)
 
 for idx, chunk in enumerate(args.prompt):
     args.prompt[idx] = [line.strip() for line in chunk.split("|")]
@@ -178,6 +182,7 @@ for repeat_round in range(args.repeat):
         # Failing to do so results in unexpected behaviour, such as the same seed not producing the same output
         # when used multiple time in a row
         import torch
+
         seed = -1
 
         if args.cpu:
