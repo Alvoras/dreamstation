@@ -6,7 +6,7 @@ help: Makefile
 		@sed -n 's/^##//p' $< | column -t -s ':' |  sed -e 's/^/ /'
 		@printf ""
 
-## install : [INSTALL] Download dependencies, models, vendor packages, then create virtualenv and install python packages
+## install_full : [INSTALL] Download dependencies, models, vendor packages, then create virtualenv and install python packages
 install_full: deps model vendor venv install_pip
 
 ## install : [INSTALL] Create virtualenv and install python packages
