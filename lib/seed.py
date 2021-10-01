@@ -2,7 +2,7 @@ import whirlpool
 
 
 def make_seed_from_file(filepath):
-    with open(filepath) as f:
+    with open(filepath, "rb") as f:
         content = f.read()
 
     return make_seed_from_str(content)
@@ -11,7 +11,7 @@ def make_seed_from_file(filepath):
 def make_seed_from_str(str_seed):
     # We use whirlpool to make up for the high collision rate of hashCode, caused by
     # similarities in consecutive characters
-    h = whirlpool.new(str_seed.encode())
+    h = whirlpool.new(str_seed)
     return hashcode64(h.hexdigest())
 
 
