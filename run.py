@@ -58,7 +58,7 @@ parser.add_argument(
     help="Model",
 )
 parser.add_argument(
-    "-f", "--display-freq", type=int, default=10, help="Display frequency"
+    "-f", "--progress-freq", type=int, default=10, help="Display frequency"
 )
 parser.add_argument(
     "--discord-freq", type=int, default=50, help="Display frequency for Discord updates"
@@ -121,7 +121,7 @@ if args.test:
     args.width = 64
     args.height = 64
     args.max_iterations = 3
-    args.display_freq = 1
+    args.progress_freq = 1
     args.prompt = ["test"]
 
 # Disable discord update if no webhook has been specified
@@ -224,8 +224,7 @@ for repeat_round in range(args.repeat):
 
             progress.console.rule("[[bold cyan] Parameters [/bold cyan]]")
 
-            row = []
-            row.append(str(prompt))
+            row = [str(prompt)]
             if args.initial_image:
                 row.append(str(args.initial_image))
             else:
@@ -236,7 +235,8 @@ for repeat_round in range(args.repeat):
             row.append(f"{repeat_round+1}/{args.repeat}")
             row.append(str(args.width))
             row.append(str(args.height))
-            row.append(str(args.display_freq))
+            row.append(str(args.discord_freq))
+            row.append(str(args.progress_freq))
             row.append(str(seed))
             progress.advance(loading_task)
 
