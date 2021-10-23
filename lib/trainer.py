@@ -259,7 +259,7 @@ class Trainer:
     def train(self, iteration):
         self.opt.zero_grad()
         loss_all = self.ascend_txt(iteration)
-        if iteration % self.args.display_freq == 0:
+        if iteration % self.args.progress_freq == 0:
             self.save_progress(iteration)
         if self.args.discord_update:
             if iteration > 0 and iteration % self.args.discord_freq == 0:
