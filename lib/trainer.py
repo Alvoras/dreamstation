@@ -263,7 +263,7 @@ class Trainer:
             self.save_progress(iteration)
         if self.args.discord_update:
             if iteration > 0 and iteration % self.args.discord_freq == 0:
-                self.progress.log("Pushed progress to Discord")
+                self.progress.log(f"Pushed progress to Discord {iteration}/{self.args.max_iterations}")
                 self.push_progress(
                     title=f"Checkpoint ({iteration}/{self.args.max_iterations})",
                     description=f"{str(self.prompt)} ({self.args.width}x{self.args.height}) - {self.args.max_iterations} iterations | {self.progress.tasks[1].elapsed:.2f}s",
